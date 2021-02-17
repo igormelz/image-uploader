@@ -1,12 +1,6 @@
 package ru.openfs.function;
 
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.net.http.HttpRequest.BodyPublishers;
-import java.net.http.HttpResponse.BodyHandlers;
 
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -20,49 +14,36 @@ import org.jboss.resteasy.annotations.cache.NoCache;
 import org.jboss.resteasy.plugins.providers.multipart.InputPart;
 import org.jboss.resteasy.plugins.providers.multipart.MultipartFormDataInput;
 
-import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
-import io.minio.http.Method;
 
 @Path("/")
 public class PhotoResource {
 
-    @ConfigProperty(name = "minio.bucket", defaultValue = "test")
-    String bucket;
+        @ConfigProperty(name = "minio.bucket", defaultValue = "test")
+        String bucket;
 
-    @ConfigProperty(name = "openfaas.fn")
-    URI function;
+        @Inject
+        MinioClient client;
 
-    @Inject
-    MinioClient client;
+        @POST
+        @Consumes(MediaType.MULTIPART_FORM_DATA)
+        @Produces(MediaType.APPLICATION_JSON)
+        @NoCache
+        public String upload(MultipartFormDataInput body) throws Exception {
+                String title = StringUtils.decodeTitle(body.getFormDataPart("title", String.class, null));
+                InputPart fileInput = body.getFormDataMap().get("file").get(0);
+                // put file to object store
+                store(fileInput.getBody(InputStream.class, null), fileInput.getMediaType());
+                return title;
+        }
 
-    @POST
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.APPLICATION_JSON)
-    @NoCache
-    public String upload(MultipartFormDataInput body) throws Exception {
-        String title = StringUtils.decodeTitle(body.getFormDataPart("title", String.class, null));
-        InputPart fileInput = body.getFormDataMap().get("file").get(0);
-        // put file to object store
-        String answer = store(bucket, fileInput.getBody(InputStream.class, null), fileInput.getMediaType());
-        // call function
-        String json = String.format("{ \"image\": \"%s\", \"title\": \"%s\"}", answer, title);
-        HttpResponse<String> response = HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(function).POST(BodyPublishers.ofString(json)).build(), BodyHandlers.ofString());
-        return response.body();
-    }
-
-    private String store(String bucket, InputStream is, MediaType mediaType) throws Exception {
-        String prefix = StringUtils.generateNumber("v", 8, "/");
-        String object = StringUtils.generateName(prefix, 11, mediaType.getSubtype());
-        client.putObject(PutObjectArgs.builder().bucket(bucket).object(object)
-                .contentType(mediaType.getType() + "/" + mediaType.getSubtype()).stream(is, -1, 5 * 1024 * 1024)
-                .build());
-        return URI
-                .create(client.getPresignedObjectUrl(
-                        GetPresignedObjectUrlArgs.builder().method(Method.GET).bucket(bucket).object(object).build()))
-                .getPath();
-    }
+        private void store(InputStream is, MediaType mediaType) throws Exception {
+                String prefix = StringUtils.generateNumber("v", 8, "/");
+                String object = StringUtils.generateName(prefix, 11, mediaType.getSubtype());
+                client.putObject(PutObjectArgs.builder().bucket(bucket).object(object)
+                                .contentType(mediaType.getType() + "/" + mediaType.getSubtype())
+                                .stream(is, -1, 5 * 1024 * 1024).build());
+        }
 
 }
