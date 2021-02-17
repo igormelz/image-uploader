@@ -4,6 +4,7 @@ import java.io.InputStream;
 
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.HEAD;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -36,6 +37,11 @@ public class PhotoResource {
                 // put file to object store
                 store(fileInput.getBody(InputStream.class, null), fileInput.getMediaType());
                 return title;
+        }
+
+        @HEAD
+        public String head() {
+                return "OK";
         }
 
         private void store(InputStream is, MediaType mediaType) throws Exception {
