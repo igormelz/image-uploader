@@ -1,22 +1,29 @@
-####
-# This Dockerfile is used in order to build a container that runs the Quarkus application in native (no JVM) mode
-#
-# Before building the docker image run:
-#
-# mvn package -Pnative -Dquarkus.native.container-build=true
-#
-# Then, build the image with:
-#
-# docker build -f src/main/docker/Dockerfile.native -t quarkus/rest-client .
-#
-# Then run the container using:
-#
-# docker run -i --rm -p 8080:8080 quarkus/rest-client
-#
-###
-FROM registry.access.redhat.com/ubi8/ubi-minimal
-WORKDIR /work/
-COPY target/*-runner /work/application
-RUN chmod 775 /work
-EXPOSE 8000
-CMD ["./application", "-Dquarkus.http.host=0.0.0.0"]
+# Create new image
+FROM registry.access.redhat.com/ubi8/ubi-minimal as base
+RUN mkdir -p /newtmp && chmod -R 777 /newtmp
+FROM scratch as base_minimal
+COPY --from=base /newtmp /tmp
+# libraries for quarkus
+COPY --from=base "/lib64/libstdc++.so.6" \
+    /lib64/libm.so.6 \
+    /lib64/libpthread.so.0 \
+    /lib64/libdl.so.2 \
+    /lib64/libz.so.1 \
+    /lib64/librt.so.1 \
+    /lib64/libc.so.6 \
+    /lib64/ld-linux-x86-64.so.2 \
+    /lib64/libgcc_s.so.1 /lib64/
+
+FROM base_minimal
+COPY target/*-runner /app
+
+EXPOSE 8008
+
+ENV MINIO_URL=play.minio.io
+ENV MINIO_ACCESS_KEY=access-key
+ENV MINIO_SECRET_KEY=secret-key
+ENV MINIO_BUCKET=bucket
+ENV DB_GRPC_PORT=9000
+ENV DB_GRPC_HOST=localhost
+
+CMD ["/app"]
