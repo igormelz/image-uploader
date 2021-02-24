@@ -3,6 +3,9 @@ package ru.openfs.function;
 import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
@@ -26,8 +29,6 @@ import io.dgraph.DgraphProto.Request;
 import io.dgraph.DgraphProto.Value;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
-import io.minio.StatObjectArgs;
-import io.minio.StatObjectResponse;
 import io.quarkus.grpc.runtime.annotations.GrpcService;
 
 @Path("/")
@@ -52,40 +53,50 @@ public class FileUploadResource {
     public String upload(MultipartFormDataInput body) throws Exception {
         String title = decodeTitle(body.getFormDataPart("title", String.class, null));
         InputPart fileInput = body.getFormDataMap().get("file").get(0);
-        // create fileObjectName
+        // generate objectName
         String object = createObjectName(fileInput.getMediaType().getSubtype());
-        // put file to object store
-        minio.putObject(PutObjectArgs.builder().bucket(bucket).object(object)
-                .contentType(fileInput.getMediaType().getType() + "/" + fileInput.getMediaType().getSubtype())
-                .stream(fileInput.getBody(InputStream.class, null), -1, 5 * 1024 * 1024).build());
-        StatObjectResponse statFile = minio.statObject(StatObjectArgs.builder().bucket(bucket).object(object).build());
-        // commit to db
+        // create db request
         Set<NQuad> setNQuads = new HashSet<NQuad>();
+        // set type Image
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("dgraph.type")
                 .setObjectValue(Value.newBuilder().setStrVal("Image").build()).build());
+        // set title
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("Image.title")
                 .setObjectValue(Value.newBuilder().setStrVal(title).build()).build());
+        // set date (iso)
+        setNQuads.add(
+            NQuad.newBuilder().setSubject("_:image").setPredicate("Image.date")
+                .setObjectValue(Value.newBuilder().setStrVal(LocalDate.now().format(DateTimeFormatter.ISO_INSTANT)).build()).build());
+        // set dt as usec
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("Image.dt")
                 .setObjectValue(Value.newBuilder().setIntVal(System.currentTimeMillis() / 1000).build()).build());
-        setNQuads.add(
-            NQuad.newBuilder().setSubject("_:image").setPredicate("Image.date")
-                .setObjectValue(Value.newBuilder().setStrVal(statFile.lastModified().toString()).build()).build());
+        // add ImageSize reference 
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("Image.sizes").setObjectId("_:size").build());
+        // set type ImageSize
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:size").setPredicate("dgraph.type")
                 .setObjectValue(Value.newBuilder().setStrVal("ImageSize").build()).build());
+        // set imageType=orig
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.imageType")
                 .setObjectValue(Value.newBuilder().setStrVal("orig").build()).build());
+        // set image object name
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.image")
                 .setObjectValue(Value.newBuilder().setStrVal(object).build()).build());
-        return db.query(Request.newBuilder().addMutations(Mutation.newBuilder().addAllSet(setNQuads).build())
+        // store to db
+        String fileId = db.query(Request.newBuilder().addMutations(Mutation.newBuilder().addAllSet(setNQuads).build())
                 .setCommitNow(true).build()).getUidsOrDefault("image", "defaultValue");
+        // put file to object store with tag fileid
+        minio.putObject(
+            PutObjectArgs.builder().bucket(bucket).object(object).tags(Collections.singletonMap("uid", fileId))
+                .contentType(fileInput.getMediaType().getType() + "/" + fileInput.getMediaType().getSubtype())
+                .stream(fileInput.getBody(InputStream.class, null), -1, 5 * 1024 * 1024).build());
+        return fileId;
     }
 
     private String createObjectName(String suffix) {
