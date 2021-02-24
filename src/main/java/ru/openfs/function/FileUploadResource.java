@@ -69,7 +69,7 @@ public class FileUploadResource {
                 .setObjectValue(Value.newBuilder().setStrVal(title).build()).build());
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("Image.dt")
-                .setObjectValue(Value.newBuilder().setIntVal(System.currentTimeMillis()).build()).build());
+                .setObjectValue(Value.newBuilder().setIntVal(System.currentTimeMillis() / 1000).build()).build());
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("Image.date")
                 .setObjectValue(Value.newBuilder().setStrVal(statFile.lastModified().toString()).build()).build());
