@@ -84,10 +84,10 @@ public class FileUploadResource {
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.imageType")
                 .setObjectValue(Value.newBuilder().setStrVal("orig").build()).build());
-        // set image object name
+        // set image path (bucket + object)
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.image")
-                .setObjectValue(Value.newBuilder().setStrVal(object).build()).build());
+                .setObjectValue(Value.newBuilder().setStrVal(bucket + '/' + object).build()).build());
         // store to db
         String fileId = db.query(Request.newBuilder().addMutations(Mutation.newBuilder().addAllSet(setNQuads).build())
                 .setCommitNow(true).build()).getUidsOrDefault("image", "defaultValue");
