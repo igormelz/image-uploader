@@ -3,7 +3,7 @@ package ru.openfs.function;
 import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashSet;
@@ -68,7 +68,7 @@ public class FileUploadResource {
         // set date (iso)
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("Image.date")
-                .setObjectValue(Value.newBuilder().setStrVal(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)).build()).build());
+                .setObjectValue(Value.newBuilder().setStrVal(ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT)).build()).build());
         // set dt as usec
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("Image.dt")
