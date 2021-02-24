@@ -68,7 +68,7 @@ public class FileUploadResource {
         // set date (iso)
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("Image.date")
-                .setObjectValue(Value.newBuilder().setStrVal(LocalDateTime.now().format(DateTimeFormatter.ISO_INSTANT)).build()).build());
+                .setObjectValue(Value.newBuilder().setStrVal(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)).build()).build());
         // set dt as usec
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:image").setPredicate("Image.dt")
