@@ -61,16 +61,31 @@ public class FileUploadResource {
         StatObjectResponse statFile = minio.statObject(StatObjectArgs.builder().bucket(bucket).object(object).build());
         // commit to db
         Set<NQuad> setNQuads = new HashSet<NQuad>();
-        setNQuads.add(NQuad.newBuilder().setSubject("_:fileUid").setPredicate("dgraph.type")
-                .setObjectValue(Value.newBuilder().setStrVal("Test").build()).build());
-        setNQuads.add(NQuad.newBuilder().setSubject("_:fileUid").setPredicate("testStr")
-                .setObjectValue(Value.newBuilder().setStrVal(object).build()).build());
-        setNQuads.add(NQuad.newBuilder().setSubject("_:fileUid").setPredicate("testSize")
-                .setObjectValue(Value.newBuilder().setIntVal(statFile.size()).build()).build());
-        setNQuads.add(NQuad.newBuilder().setSubject("_:fileUid").setPredicate("test_dt")
+        setNQuads.add(
+            NQuad.newBuilder().setSubject("_:image").setPredicate("dgraph.type")
+                .setObjectValue(Value.newBuilder().setStrVal("Image").build()).build());
+        setNQuads.add(
+            NQuad.newBuilder().setSubject("_:image").setPredicate("Image.title")
+                .setObjectValue(Value.newBuilder().setStrVal(title).build()).build());
+        setNQuads.add(
+            NQuad.newBuilder().setSubject("_:image").setPredicate("Image.dt")
+                .setObjectValue(Value.newBuilder().setIntVal(System.currentTimeMillis()).build()).build());
+        setNQuads.add(
+            NQuad.newBuilder().setSubject("_:image").setPredicate("Image.date")
                 .setObjectValue(Value.newBuilder().setStrVal(statFile.lastModified().toString()).build()).build());
+        setNQuads.add(
+            NQuad.newBuilder().setSubject("_:image").setPredicate("Image.sizes").setObjectId("_:size").build());
+        setNQuads.add(
+            NQuad.newBuilder().setSubject("_:size").setPredicate("dgraph.type")
+                .setObjectValue(Value.newBuilder().setStrVal("ImageSize").build()).build());
+        setNQuads.add(
+            NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.imageType")
+                .setObjectValue(Value.newBuilder().setStrVal("orig").build()).build());
+        setNQuads.add(
+            NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.image")
+                .setObjectValue(Value.newBuilder().setStrVal(object).build()).build());
         return db.query(Request.newBuilder().addMutations(Mutation.newBuilder().addAllSet(setNQuads).build())
-                .setCommitNow(true).build()).getUidsOrDefault("fileUid", "defaultValue");
+                .setCommitNow(true).build()).getUidsOrDefault("image", "defaultValue");
     }
 
     private String createObjectName(String suffix) {
