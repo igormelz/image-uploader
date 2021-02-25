@@ -81,13 +81,13 @@ public class FileUploadResource {
         setNQuads.add(
             NQuad.newBuilder().setSubject("_:size").setPredicate("dgraph.type")
                 .setObjectValue(Value.newBuilder().setStrVal("ImageSize").build()).build());
-        // set imageType=orig
+        // set image type orig
         setNQuads.add(
-            NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.imageType")
-                .setObjectValue(Value.newBuilder().setStrVal("orig").build()).build());
+            NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.type")
+                .setObjectValue(Value.newBuilder().setStrVal("og").build()).build());
         // set image path (bucket + object)
         setNQuads.add(
-            NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.image")
+            NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.path")
                 .setObjectValue(Value.newBuilder().setStrVal(bucket + '/' + object).build()).build());
         // store to db
         Map<String,String> uids = db.query(Request.newBuilder().addMutations(Mutation.newBuilder().addAllSet(setNQuads).build())
