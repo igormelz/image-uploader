@@ -7,6 +7,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -89,14 +90,14 @@ public class FileUploadResource {
             NQuad.newBuilder().setSubject("_:size").setPredicate("ImageSize.image")
                 .setObjectValue(Value.newBuilder().setStrVal(bucket + '/' + object).build()).build());
         // store to db
-        String fileId = db.query(Request.newBuilder().addMutations(Mutation.newBuilder().addAllSet(setNQuads).build())
-                .setCommitNow(true).build()).getUidsOrDefault("image", "defaultValue");
+        Map<String,String> uids = db.query(Request.newBuilder().addMutations(Mutation.newBuilder().addAllSet(setNQuads).build())
+                .setCommitNow(true).build()).getUidsMap();
         // put file to object store with tag fileid
         minio.putObject(
-            PutObjectArgs.builder().bucket(bucket).object(object).tags(Collections.singletonMap("uid", fileId))
+            PutObjectArgs.builder().bucket(bucket).object(object).tags(uids)
                 .contentType(fileInput.getMediaType().getType() + "/" + fileInput.getMediaType().getSubtype())
                 .stream(fileInput.getBody(InputStream.class, null), -1, 5 * 1024 * 1024).build());
-        return fileId;
+        return uids.get("image");
     }
 
     private String createObjectName(String suffix) {
