@@ -129,7 +129,7 @@ public class FileUploadResource {
         // remove id
         db.query(Request.newBuilder()
                 .addMutations(Mutation.newBuilder()
-                        .setDelNquads(ByteString.copyFromUtf8(String.format("%s * * .\n", id))).build())
+                        .setDelNquads(ByteString.copyFromUtf8(String.format("<%s> * * .\n", id))).build())
                 .setCommitNow(true).build());
     }
 
