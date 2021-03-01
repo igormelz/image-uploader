@@ -1,11 +1,8 @@
 package ru.openfs.function;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
@@ -13,6 +10,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -37,14 +35,13 @@ import io.dgraph.DgraphProto.Value;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
-import io.minio.errors.ErrorResponseException;
-import io.minio.errors.InsufficientDataException;
-import io.minio.errors.InternalException;
-import io.minio.errors.InvalidResponseException;
-import io.minio.errors.ServerException;
-import io.minio.errors.XmlParserException;
 import io.quarkus.grpc.runtime.annotations.GrpcService;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 
 @Path("/")
 public class FileUploadResource {
@@ -53,6 +50,16 @@ public class FileUploadResource {
 
     @ConfigProperty(name = "minio.bucket", defaultValue = "test")
     String bucket;
+
+    @Inject
+    Vertx vertx;
+
+    private WebClient client;
+
+    @PostConstruct
+    void initialize() {
+        this.client = WebClient.create(vertx, new WebClientOptions().setKeepAlive(false));
+    }
 
     @Inject
     MinioClient minio;
@@ -106,6 +113,16 @@ public class FileUploadResource {
         minio.putObject(PutObjectArgs.builder().bucket(bucket).object(object).tags(uids)
                 .contentType(fileInput.getMediaType().getType() + "/" + fileInput.getMediaType().getSubtype())
                 .stream(fileInput.getBody(InputStream.class, null), -1, 5 * 1024 * 1024).build());
+        // call thumbnail
+        client.post(8009, "83.68.33.151", "/").sendJsonObject(new JsonObject().put("Key", bucket + "/" + object),
+                ar -> {
+                    if (ar.succeeded()) {
+                        HttpResponse<Buffer> response = ar.result();
+                        System.out.println("Got HTTP response with status " + response.statusCode());
+                    } else {
+                        ar.cause().printStackTrace();
+                    }
+                });
         return uids.get("image");
     }
 
