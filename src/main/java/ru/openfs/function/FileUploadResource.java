@@ -117,6 +117,9 @@ public class FileUploadResource {
                 .setQuery(String.format("{dd(func: uid(%s)) { Image.sizes { ImageSize.path }}}", id)).setReadOnly(true)
                 .build()).getJson().toStringUtf8();
         JsonObject path = new JsonObject(pathJson);
+        if (path.getJsonArray("dd").getList().size() == 0) {
+            return;
+        }
         // delete files
         for (Object sizes : path.getJsonArray("dd").getJsonObject(0).getJsonArray("Image.sizes")) {
             deleteFilePath(((JsonObject) sizes).getString("ImageSize.path"));
