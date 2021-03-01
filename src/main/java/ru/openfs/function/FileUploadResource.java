@@ -5,7 +5,6 @@ import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
@@ -13,8 +12,10 @@ import java.util.Set;
 
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
@@ -31,6 +32,7 @@ import io.dgraph.DgraphProto.Value;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.quarkus.grpc.runtime.annotations.GrpcService;
+import io.vertx.core.json.JsonObject;
 
 @Path("/")
 public class FileUploadResource {
@@ -98,6 +100,17 @@ public class FileUploadResource {
                 .contentType(fileInput.getMediaType().getType() + "/" + fileInput.getMediaType().getSubtype())
                 .stream(fileInput.getBody(InputStream.class, null), -1, 5 * 1024 * 1024).build());
         return uids.get("image");
+    }
+
+
+    @DELETE
+    @Path("/photo/{id}")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String deleteFile(@PathParam("id") String id) {
+        String queryPath = String.format("{dd(func: uid({})) {uid, Image.sizes {uid,ImageSize.type,ImageSize.path}}}", id);
+        String pathJson = db.query(Request.newBuilder().setQuery(queryPath).setReadOnly(true).build()).getJson().toStringUtf8(); 
+        JsonObject path = new JsonObject(pathJson);
+        return path.getJsonObject("data").getJsonArray("dd").getJsonObject(0).getString("uid");
     }
 
     private String createObjectName(String suffix) {
