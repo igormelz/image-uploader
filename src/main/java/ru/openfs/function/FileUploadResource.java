@@ -104,10 +104,10 @@ public class FileUploadResource {
 
 
     @DELETE
-    @Path("/photo/{id}")
+    @Path("/{id}")
     @Produces(MediaType.TEXT_PLAIN)
     public String deleteFile(@PathParam("id") String id) {
-        String queryPath = String.format("{dd(func: uid({})) {uid, Image.sizes {uid,ImageSize.type,ImageSize.path}}}", id);
+        String queryPath = String.format("{dd(func: uid(\"{}\")) {uid, Image.sizes {uid,ImageSize.type,ImageSize.path}}}", id);
         String pathJson = db.query(Request.newBuilder().setQuery(queryPath).setReadOnly(true).build()).getJson().toStringUtf8(); 
         JsonObject path = new JsonObject(pathJson);
         return path.getJsonObject("data").getJsonArray("dd").getJsonObject(0).getString("uid");
