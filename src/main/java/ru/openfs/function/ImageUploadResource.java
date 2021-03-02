@@ -7,7 +7,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.Charset;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
@@ -73,6 +75,15 @@ public class ImageUploadResource {
         String title = decodeTitle(body.getFormDataPart("title", String.class, null));
         InputPart fileInput = body.getFormDataMap().get("file").get(0);
 
+        // test access thumbnail
+        var opt = client.send(
+                HttpRequest.newBuilder(thumbnailUrl).method("OPTIONS", null).timeout(Duration.ofSeconds(1L)).build(),
+                BodyHandlers.ofString());
+        if (opt.statusCode() != 200) {
+            return Response.status(Response.Status.GATEWAY_TIMEOUT).entity("Service unavailable. Try again later.")
+                    .build();
+        }
+        
         // generate objectName
         String object = createObjectName(fileInput.getMediaType().getSubtype());
 
@@ -96,7 +107,9 @@ public class ImageUploadResource {
         if (response.statusCode() == 200) {
             return Response.ok("ok").build();
         }
-        return Response.status(Response.Status.BAD_GATEWAY).entity("Can not store file to cloud").build();
+        // cleanup file
+        deleteImage(uids.get("image"));
+        return Response.status(Response.Status.BAD_REQUEST).entity("Can not store file to cloud").build();
     }
 
     @DELETE
