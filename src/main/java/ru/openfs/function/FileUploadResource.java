@@ -19,6 +19,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import com.google.protobuf.ByteString;
 
@@ -36,12 +37,11 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.quarkus.grpc.runtime.annotations.GrpcService;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
+import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpResponse;
-import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
+import io.vertx.mutiny.core.Vertx;
+import io.vertx.mutiny.ext.web.client.WebClient;
 
 @Path("/")
 public class FileUploadResource {
@@ -70,9 +70,8 @@ public class FileUploadResource {
 
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.TEXT_PLAIN)
     @NoCache
-    public String upload(MultipartFormDataInput body) throws Exception {
+    public Uni<String> upload(MultipartFormDataInput body) throws Exception {
         String title = decodeTitle(body.getFormDataPart("title", String.class, null));
         InputPart fileInput = body.getFormDataMap().get("file").get(0);
         // generate objectName
@@ -114,16 +113,15 @@ public class FileUploadResource {
                 .contentType(fileInput.getMediaType().getType() + "/" + fileInput.getMediaType().getSubtype())
                 .stream(fileInput.getBody(InputStream.class, null), -1, 5 * 1024 * 1024).build());
         // call thumbnail
-        client.post(8009, "83.68.33.151", "/").sendJsonObject(new JsonObject().put("Key", bucket + "/" + object),
-                ar -> {
-                    if (ar.succeeded()) {
-                        HttpResponse<Buffer> response = ar.result();
-                        System.out.println("Got HTTP response with status " + response.statusCode());
+        return client.post(8009, "83.68.33.151", "/").sendJsonObject(new JsonObject().put("Key", bucket + "/" + object))
+                .onItem().transform(r -> {
+                    if (r.statusCode() == 200) {
+                        return "ok";
                     } else {
-                        ar.cause().printStackTrace();
+                        System.out.println(r.statusMessage());
+                        return "error";
                     }
                 });
-        return uids.get("image");
     }
 
     @DELETE
