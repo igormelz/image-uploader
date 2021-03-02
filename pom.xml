@@ -19,7 +19,7 @@
     <dependencies>
       <dependency>
         <groupId>io.quarkus</groupId>
-        <artifactId>quarkus-bom</artifactId>
+        <artifactId>quarkus-universe-bom</artifactId>
         <version>${quarkus.version}</version>
         <type>pom</type>
         <scope>import</scope>
@@ -40,10 +40,6 @@
       <artifactId>quarkus-minio</artifactId>
       <version>0.2.1</version>
     </dependency>
-<dependency>
-  <groupId>io.smallrye.reactive</groupId>
-  <artifactId>smallrye-mutiny-vertx-web-client</artifactId>
-</dependency>
   </dependencies>
   <build>
     <plugins>

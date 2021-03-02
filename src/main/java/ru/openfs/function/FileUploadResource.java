@@ -1,7 +1,11 @@
 package ru.openfs.function;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URLDecoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -24,7 +28,6 @@ import javax.ws.rs.core.Response;
 import com.google.protobuf.ByteString;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.resteasy.annotations.cache.NoCache;
 import org.jboss.resteasy.plugins.providers.multipart.InputPart;
 import org.jboss.resteasy.plugins.providers.multipart.MultipartFormDataInput;
 
@@ -37,11 +40,7 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.quarkus.grpc.runtime.annotations.GrpcService;
-import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.WebClientOptions;
-import io.vertx.mutiny.core.Vertx;
-import io.vertx.mutiny.ext.web.client.WebClient;
 
 @Path("/")
 public class FileUploadResource {
@@ -52,26 +51,23 @@ public class FileUploadResource {
     String bucket;
 
     @Inject
-    Vertx vertx;
-
-    private WebClient client;
-
-    @PostConstruct
-    void initialize() {
-        this.client = WebClient.create(vertx, new WebClientOptions().setKeepAlive(false));
-    }
-
-    @Inject
     MinioClient minio;
 
     @Inject
     @GrpcService("db")
     DgraphGrpc.DgraphBlockingStub db;
 
+    HttpClient client;
+    URI thumbnailUri = URI.create("http://83.68.33.151:8009");
+
+    @PostConstruct
+    void initialize() {
+        this.client = HttpClient.newHttpClient();
+    }
+
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @NoCache
-    public Uni<String> upload(MultipartFormDataInput body) throws Exception {
+    public Response upload(MultipartFormDataInput body) throws Exception {
         String title = decodeTitle(body.getFormDataPart("title", String.class, null));
         InputPart fileInput = body.getFormDataMap().get("file").get(0);
         // generate objectName
@@ -113,15 +109,15 @@ public class FileUploadResource {
                 .contentType(fileInput.getMediaType().getType() + "/" + fileInput.getMediaType().getSubtype())
                 .stream(fileInput.getBody(InputStream.class, null), -1, 5 * 1024 * 1024).build());
         // call thumbnail
-        return client.post(8009, "83.68.33.151", "/").sendJsonObject(new JsonObject().put("Key", bucket + "/" + object))
-                .onItem().transform(r -> {
-                    if (r.statusCode() == 200) {
-                        return "ok";
-                    } else {
-                        System.out.println(r.statusMessage());
-                        return "error";
-                    }
-                });
+        String thumbnailJson = String.format("{\"Key\":\"%s/%s\"}", bucket, object);
+        var response = client.send(
+                HttpRequest.newBuilder(thumbnailUri).header("Content-type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(thumbnailJson)).build(),
+                HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == 200) {
+            return Response.ok("ok").build();
+        }
+        return Response.serverError().build();
     }
 
     @DELETE
