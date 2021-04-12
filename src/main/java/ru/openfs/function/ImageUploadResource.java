@@ -78,7 +78,7 @@ public class ImageUploadResource {
         // test access thumbnail
         try {
             client.send(HttpRequest.newBuilder(thumbnailUrl).method("HEAD", BodyPublishers.noBody())
-                    .timeout(Duration.ofSeconds(1L)).build(), BodyHandlers.ofString());
+                    .timeout(Duration.ofSeconds(1L)).build(), BodyHandlers.discarding());
         } catch (Exception e) {
             return Response.status(Response.Status.GATEWAY_TIMEOUT).entity("Service unavailable. Try again later.")
                     .build();
